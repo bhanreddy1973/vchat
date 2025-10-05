@@ -8,6 +8,7 @@ router.get("/signup",(req,res )=>{
 });
 
 router.get("/login",(req,res )=>{
+    console.log("Login API called");
     res.send("This is login page");
 });
 
