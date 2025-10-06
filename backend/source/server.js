@@ -1,6 +1,7 @@
 const express = require('express');
 const dotenv = require('dotenv');
 const path = require('path');
+const cookieParser = require('cookie-parser');
 
 dotenv.config();
 
@@ -8,6 +9,7 @@ const app = express();
 
 // Add middleware
 app.use(express.json());
+app.use(cookieParser());
 
 // Add a root route for testing
 // app.get('/', (req, res) => {
