@@ -50,9 +50,19 @@ const sendMessage = async (req, res) => {
         
         // ✅ Convert ObjectId to string
         const senderId = req.user._id.toString();
-        
-        console.log('SenderId (string):', senderId);
-        console.log('ReceiverId:', receiverId);
+
+        if (!text && !image) {
+            return res.status(400).json({ error: "Message text or image is required" });
+        }
+        if(senderId === receiverId) {
+            return res.status(400).json({ error: "You cannot send a message to yourself" });
+        }
+        const receiverexists = await User.exists({ _id: receiverId });
+        if(!receiverexists) {
+            return res.status(404).json({ error: "Receiver not found" });
+        }
+        // console.log('SenderId (string):', senderId);
+        // console.log('ReceiverId:', receiverId);
 
         let imageUrl;
         if (image) {
