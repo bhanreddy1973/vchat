@@ -8,7 +8,8 @@ dotenv.config();
 const app = express();
 
 // Add middleware
-app.use(express.json());
+app.use(express.json({limit: '10mb'})); // To parse JSON bodies with increased limit
+app.use(express.urlencoded({ extended: true, limit: '10mb' })); // To parse URL-encoded bodies with increased limit
 app.use(cookieParser());
 
 // Add a root route for testing

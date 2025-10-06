@@ -11,7 +11,7 @@ const router = express.Router();
 // router.get("/test", arcjetProtect, (req,res )=>{
 //     res.status(200).json({message:"test route"});
 // });
-router.use(arcjetProtect);
+// router.use(arcjetProtect);
 
 router.post("/signup", signup);
 router.post("/login", login);
