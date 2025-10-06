@@ -3,7 +3,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { generateToken } = require('../lib/utils');
 const { sendWelcomeEmail } = require('../emails/emailHandlers'); // ✅ Import from emailHandlers
-const {ENV} = require('../lib/env');
+const {Env} = require('../lib/env');
 // Rest of your auth.controller.js code remains the same...
 
 const signup = async(req, res) => {
@@ -39,7 +39,7 @@ const signup = async(req, res) => {
         
         // Send welcome email (don't let email failure break signup)
         try {
-            await sendWelcomeEmail(savedUser.email, savedUser.fullname, ENV.CLIENT_URL || 'http://localhost:5000');
+            await sendWelcomeEmail(savedUser.email, savedUser.fullname, Env.CLIENT_URL || 'http://localhost:5000');
         } catch (emailError) {
             console.error("Failed to send welcome email:", emailError);
         }
@@ -96,7 +96,7 @@ const login = async(req, res) => {
 
 const logout = async(req, res) => {
     try {
-        res.cookie("token", "", { maxAge: 0 });
+        res.cookie("jwt", "", { maxAge: 0 });
         res.status(200).json({ message: "Logged out successfully" });
     } catch (error) {
         console.error("Error occurred during logout:", error);

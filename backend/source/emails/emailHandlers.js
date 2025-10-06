@@ -1,7 +1,7 @@
 const { Resend } = require('resend');
 const { createWelcomeEmailTemplate } = require('./emailTemplate');
 require('dotenv').config();
-const { ENV } = require('../lib/env');
+const { Env } = require('../lib/env');
 const resend = new Resend(process.env.RESEND_API_KEY);
 
 const sendWelcomeEmail = async (email, name, clientURL) => {
@@ -9,7 +9,7 @@ const sendWelcomeEmail = async (email, name, clientURL) => {
         console.log(`Sending welcome email to ${email} for user ${name}`);
         
         const { data, error } = await resend.emails.send({
-            from: `${ENV.EMAIL_FROM_NAME} <${ENV.EMAIL_FROM}>`,
+            from: `${Env.EMAIL_FROM_NAME} <${Env.EMAIL_FROM}>`,
             to: email,
             subject: 'Welcome to Chatify!',
             html: createWelcomeEmailTemplate(name, clientURL)
