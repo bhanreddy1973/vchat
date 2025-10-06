@@ -17,6 +17,7 @@ app.use(express.json());
 // Import routes (make sure these files exist)
 const authRoute = require('./routes/auth.route');
 const messageRoute = require('./routes/message.route');
+const connectDB = require('./lib/db');
 
 const PORT = process.env.PORT || 5000;
 
@@ -37,4 +38,7 @@ if(process.env.NODE_ENV === "production"){
     });
 }
 
-app.listen(PORT, () => console.log(`Server started on port ${PORT}`));
+app.listen(PORT, () => {
+    console.log(`Server started on port ${PORT}`);
+    connectDB();
+});
