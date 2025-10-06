@@ -1,9 +1,10 @@
 const mongoose = require('mongoose');
+const { Env } = require('./env');
 
 
 const connectDB = async () => {
     try {
-         const { MONGODB_URL } = process.env;
+         const { MONGODB_URL } = Env;
          if (!MONGODB_URL) {
              throw new Error('MONGODB_URL is not defined in environment variables');
          }
