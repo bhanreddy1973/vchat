@@ -4,6 +4,7 @@ const jwt = require('jsonwebtoken');
 const { generateToken } = require('../lib/utils');
 const { sendWelcomeEmail } = require('../emails/emailHandlers'); // ✅ Import from emailHandlers
 const {Env} = require('../lib/env');
+const { cloudinary } = require('../lib/cloundinary');
 // Rest of your auth.controller.js code remains the same...
 
 const signup = async(req, res) => {
@@ -104,4 +105,21 @@ const logout = async(req, res) => {
     }
 }
 
-module.exports = { signup, login, logout };
+
+const updateProfile = async(req, res) => {
+    try {
+        const { profilePic} = req.body;
+        const userId = req.user._id;
+        if(!profilePic) return res.status(400).json({ message: "Profile picture URL is required" });
+
+        const uploadResponse = await cloudinary.uploader.upload(profilePic);
+        const updatedUser = await User.findByIdAndUpdate(userId, { profilePic: uploadResponse.secure_url }, { new: true }).select('-password');
+
+        res.status(200).json(updatedUser);
+    } catch (error) {
+        console.error("Error occurred during profile update:", error);
+        return res.status(500).json({ message: "Internal server error" });
+    }
+};
+
+module.exports = { signup, login, logout, updateProfile };
