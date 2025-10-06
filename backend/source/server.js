@@ -18,14 +18,15 @@ app.use(express.json());
 const authRoute = require('./routes/auth.route');
 const messageRoute = require('./routes/message.route');
 const connectDB = require('./lib/db');
+const { Env } = require('./lib/env');
 
-const PORT = process.env.PORT || 5000;
+const PORT = Env.PORT || 5000;
 
 app.use("/api/auth", authRoute);    
 app.use("/api/message", messageRoute);
 
 // Serve static files in production
-if(process.env.NODE_ENV === "production"){
+if(Env.NODE_ENV === "production"){
     app.use(express.static(path.join(__dirname,"../../frontend/dist")));
     
     // Catch-all: serve React app for non-API routes
