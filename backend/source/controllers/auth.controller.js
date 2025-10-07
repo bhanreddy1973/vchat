@@ -97,7 +97,7 @@ const login = async(req, res) => {
 
 const logout = async(req, res) => {
     try {
-        res.cookie("jwt", "", { maxAge: 0 });
+        res.cookie("token", "", { maxAge: 0 });
         res.status(200).json({ message: "Logged out successfully" });
     } catch (error) {
         console.error("Error occurred during logout:", error);
@@ -121,5 +121,20 @@ const updateProfile = async(req, res) => {
         return res.status(500).json({ message: "Internal server error" });
     }
 };
+const checkAuth = async (req, res) => {
+    try {
+        res.status(200).json({ user: req.user });
+    } catch (error) {
+        console.error("Error in checkAuth controller:", error);
+        res.status(500).json({ message: "Internal server error" });
+    }
+};
 
-module.exports = { signup, login, logout, updateProfile };
+// Then update your exports
+module.exports = { 
+    signup, 
+    login, 
+    logout, 
+    updateProfile,
+    checkAuth  // ✅ Add this export
+};
