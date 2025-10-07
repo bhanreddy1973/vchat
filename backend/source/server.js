@@ -1,56 +1,73 @@
+// Add this to your server.js
 const express = require('express');
 const dotenv = require('dotenv');
 const cookieParser = require('cookie-parser');
 const path = require('path');
 const cors = require('cors');
 
-// ✅ Load environment variables first
 dotenv.config();
 
 const app = express();
-
-// ✅ Import Env after dotenv.config()
 const { Env } = require('./lib/env');
 
-// ✅ Add CORS middleware with proper configuration
+const PORT = process.env.PORT || Env.PORT || 5000;
+
+// CORS configuration
 app.use(cors({
-    origin: process.env.CLIENT_URL || 'http://localhost:5173', // Use process.env directly or fallback
+    origin: process.env.NODE_ENV === 'production' 
+        ? ['https://vchat-xn0io.sevalla.app'] 
+        : ['http://localhost:5173'],
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
-// Other middleware
 app.use(express.json());
 app.use(cookieParser());
 
-// Import database connection
+// Database connection
 const connectDB = require('./lib/db');
 
-// Import routes
+// Routes
 const authRoute = require('./routes/auth.route');
 const messageRoute = require('./routes/message.route');
 
-const PORT = Env.PORT || 5000;
-
-// API routes
-app.use("/api/auth", authRoute);    
+app.use("/api/auth", authRoute);
 app.use("/api/message", messageRoute);
 
 // Serve static files in production
-if(Env.NODE_ENV === "production"){
-    app.use(express.static(path.join(__dirname,"../../frontend/dist")));
+if (process.env.NODE_ENV === "production") {
+    app.use(express.static(path.join(__dirname, "../frontend/dist")));
     
-    app.get("*",(req,res)=>{
-        res.sendFile(path.resolve(__dirname,"../../frontend/dist/index.html"));
+    app.get("*", (req, res) => {
+        res.sendFile(path.resolve(__dirname, "../frontend/dist/index.html"));
     });
 } else {
     app.get('/', (req, res) => {
-        res.json({ message: 'Chatify API is running in development mode!' });
+        res.json({ message: 'Chatify API is running!' });
     });
 }
 
-app.listen(PORT, () => {
-    console.log(`Server started on port ${PORT}`);
-    connectDB();
+// ✅ Global error handler
+app.use((err, req, res, next) => {
+    console.error('Unhandled error:', err);
+    res.status(500).json({ message: 'Internal server error' });
 });
+
+// ✅ Start server with proper error handling
+const startServer = async () => {
+    try {
+        await connectDB();
+        console.log('✅ Database connected');
+        
+        app.listen(PORT, '0.0.0.0', () => {
+            console.log(`✅ Server running on port ${PORT}`);
+            console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+        });
+    } catch (error) {
+        console.error('❌ Failed to start server:', error);
+        process.exit(1);
+    }
+};
+
+startServer();

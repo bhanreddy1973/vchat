@@ -1,33 +1,41 @@
+// ✅ Use dynamic import instead of require
+let arcjet;
+
+const initializeArcjet = async () => {
+    if (!arcjet) {
+        const arcjetModule = await import('@arcjet/node');
+        arcjet = arcjetModule.default;
+    }
+    return arcjet;
+};
+
 const { Env } = require('./env');
-const arcjet = require("@arcjet/node"); // ✅ Default import
-const { shield, detectBot, slidingWindow } = require("@arcjet/node"); // ✅ Named imports
 
-const aj = arcjet.default({ // ✅ Use arcjet.default
-  key: Env.ARCJET_KEY,
-  rules: [
-    // Shield protects your app from common attacks e.g. SQL injection
-    shield({ mode: "LIVE" }),
+// ✅ Create arcjet configuration function
+const createArcjetInstance = async () => {
+    const arcjetLib = await initializeArcjet();
     
-    // Create a bot detection rule
-    detectBot({
-      mode: "LIVE", // Blocks requests. Use "DRY_RUN" to log only
-      // Block all bots except the following
-      allow: [
-        "CATEGORY:SEARCH_ENGINE", // Google, Bing, etc
-        // Uncomment to allow these other common bot categories
-        // See the full list at https://arcjet.com/bot-list
-        //"CATEGORY:MONITOR", // Uptime monitoring services
-        //"CATEGORY:PREVIEW", // Link previews e.g. Slack, Discord
-      ],
-    }),
-    
-    // Sliding window rate limiting
-    slidingWindow({
-      mode: "LIVE",
-      max: 100, // Max 100 requests
-      interval: "1m", // Per 1 minute
-    }),
-  ],
-});
+    return arcjetLib({
+        key: Env.ARCJET_KEY,
+        rules: [
+            // Shield rule
+            arcjetLib.shield({
+                mode: Env.ARCJET_ENV === 'development' ? 'DRY_RUN' : 'LIVE'
+            }),
+            // Rate limiting
+            arcjetLib.rateLimit({
+                mode: Env.ARCJET_ENV === 'development' ? 'DRY_RUN' : 'LIVE',
+                characteristics: ['ip'],
+                window: '1m',
+                max: 60
+            }),
+            // Bot detection
+            arcjetLib.detectBot({
+                mode: Env.ARCJET_ENV === 'development' ? 'DRY_RUN' : 'LIVE',
+                allow: []
+            })
+        ]
+    });
+};
 
-module.exports = { aj };
+module.exports = { createArcjetInstance };
