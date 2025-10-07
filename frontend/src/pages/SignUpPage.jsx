@@ -42,14 +42,14 @@ function SignUpPage() {
         console.error("Signup error:", error);  
     }
   };
-
-  return (
-    <div className="min-h-screen w-full flex items-center justify-center p-2 bg-slate-900 relative overflow-hidden">
-      <div className="relative w-full max-w-5xl h-full min-h-[400px]">
-        <BorderAnimatedContainer>
+return (
+    // ✅ Consistent container sizing
+    <div className="min-h-screen w-full flex items-center justify-center p-4 bg-slate-900 overflow-hidden">
+      <div className="relative w-full max-w-5xl h-[85vh] max-h-[700px]"> {/* ✅ Same size as LoginPage */}
+         <BorderAnimatedContainer>
           <div className="w-full flex flex-col md:flex-row">
-            {/* FORM COLUMN - LEFT SIDE */}
-            <div className="md:w-1/2 p-8 flex flex-col items-center justify-center md:border-r border-slate-600/30 overflow-hidden">
+            {/* FORM CLOUMN - LEFT SIDE */}
+            <div className="md:w-1/2 p-8 flex items-center justify-center md:border-r border-slate-600/30">
               <div className="w-full max-w-md">
                 {/* HEADING TEXT */}
                 <div className="text-center mb-8">
@@ -65,13 +65,13 @@ function SignUpPage() {
                     <label className="auth-input-label">Full Name</label>
                     <div className="relative">
                       <UserIcon className="auth-input-icon" />
+
                       <input
                         type="text"
                         value={formData.fullName}
                         onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
                         className="input"
-                        placeholder="Bhanu"
-                        required // ✅ Add HTML validation
+                        placeholder="John Doe"
                       />
                     </div>
                   </div>
@@ -81,13 +81,13 @@ function SignUpPage() {
                     <label className="auth-input-label">Email</label>
                     <div className="relative">
                       <MailIcon className="auth-input-icon" />
+
                       <input
                         type="email"
                         value={formData.email}
                         onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                         className="input"
-                        placeholder="bhanu@gmail.com"
-                        required // ✅ Add HTML validation
+                        placeholder="johndoe@gmail.com"
                       />
                     </div>
                   </div>
@@ -97,14 +97,13 @@ function SignUpPage() {
                     <label className="auth-input-label">Password</label>
                     <div className="relative">
                       <LockIcon className="auth-input-icon" />
+
                       <input
                         type="password"
                         value={formData.password}
                         onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                         className="input"
                         placeholder="Enter your password"
-                        minLength={6} // ✅ Add HTML validation
-                        required
                       />
                     </div>
                   </div>
@@ -112,7 +111,7 @@ function SignUpPage() {
                   {/* SUBMIT BUTTON */}
                   <button className="auth-btn" type="submit" disabled={isSigningUp}>
                     {isSigningUp ? (
-                      <LoaderIcon className="w-5 h-5 animate-spin mx-auto" />
+                      <LoaderIcon className="w-full h-5 animate-spin text-center" />
                     ) : (
                       "Create Account"
                     )}
@@ -131,12 +130,13 @@ function SignUpPage() {
             <div className="hidden md:w-1/2 md:flex items-center justify-center p-6 bg-gradient-to-bl from-slate-800/20 to-transparent">
               <div>
                 <img
-                  src="../../public/signup.png"
+                  src="/signup.png"
                   alt="People using mobile devices"
                   className="w-full h-auto object-contain"
                 />
                 <div className="mt-6 text-center">
                   <h3 className="text-xl font-medium text-cyan-400">Start Your Journey Today</h3>
+
                   <div className="mt-4 flex justify-center gap-4">
                     <span className="auth-badge">Free</span>
                     <span className="auth-badge">Easy Setup</span>
