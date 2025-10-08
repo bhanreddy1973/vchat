@@ -10,27 +10,24 @@ dotenv.config();
 
 const app = express();
 
-// ✅ Create HTTP server and Socket.IO
+// Create HTTP server and Socket.IO
 const server = http.createServer(app);
 const io = socketIo(server, {
   cors: {
     origin: process.env.NODE_ENV === 'production' 
-      ? ['https://vchat-xn0io.sevalla.app'] 
+      ? ['https://vchat-xn0io.sevalla.app','http://localhost:5173'] 
       : ['http://localhost:5173'],
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS']
   }
 });
 
-// ✅ Remove this line causing the error - __dirname is already available in CommonJS
-// const __dirname = path.resolve(); // ❌ This line causes the error
-
 const PORT = process.env.PORT || 5000;
 
 // CORS configuration
 app.use(cors({
     origin: process.env.NODE_ENV === 'production' 
-        ? ['https://vchat-xn0io.sevalla.app'] 
+        ? ['https://vchat-xn0io.sevalla.app', 'http://localhost:5173'] 
         : ['http://localhost:5173'],
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
@@ -51,15 +48,14 @@ const messageRoute = require('./routes/message.route');
 app.use("/api/auth", authRoute);
 app.use("/api/messages", messageRoute);
 
-// ✅ Static file serving for production
+// Static file serving for production
 if (process.env.NODE_ENV === "production") {
-    // ✅ Use path.join with __dirname (already available in CommonJS)
     const staticPath = path.join(__dirname, "../../frontend/dist");
-    console.log("📁 Serving static files from:", staticPath);
+    // console.log("📁 Serving static files from:", staticPath);
     
     app.use(express.static(staticPath));
     
-    // ✅ Handle SPA routing
+    // Handle SPA routing
     app.get("*", (req, res) => {
         // Skip API routes
         if (req.path.startsWith('/api/')) {
@@ -67,7 +63,7 @@ if (process.env.NODE_ENV === "production") {
         }
         
         const indexPath = path.join(__dirname, "../../frontend/dist/index.html");
-        console.log("📄 Serving index.html from:", indexPath);
+        // console.log("📄 Serving index.html from:", indexPath);
         
         res.sendFile(indexPath, (err) => {
             if (err) {
@@ -86,16 +82,16 @@ if (process.env.NODE_ENV === "production") {
     });
 }
 
-// ✅ Socket.IO setup
+// Socket.IO setup
 const onlineUsers = new Map(); // userId -> socketId
 
 io.on('connection', (socket) => {
-    console.log(`✅ User connected: ${socket.id}`);
+    // console.log(`✅ User connected: ${socket.id}`);
     
     const userId = socket.handshake.query.userId;
     if (userId && userId !== 'undefined') {
         onlineUsers.set(userId, socket.id);
-        console.log(`👤 User ${userId} is online`);
+        // console.log(`👤 User ${userId} is online`);
         
         // Broadcast online users to all clients
         io.emit('getOnlineUsers', Array.from(onlineUsers.keys()));
@@ -103,11 +99,11 @@ io.on('connection', (socket) => {
 
     // Handle disconnection
     socket.on('disconnect', () => {
-        console.log(`❌ User disconnected: ${socket.id}`);
+        // console.log(`❌ User disconnected: ${socket.id}`);
         
         if (userId && userId !== 'undefined') {
             onlineUsers.delete(userId);
-            console.log(`👤 User ${userId} went offline`);
+            // console.log(`👤 User ${userId} went offline`);
             
             // Broadcast updated online users
             io.emit('getOnlineUsers', Array.from(onlineUsers.keys()));
@@ -115,13 +111,13 @@ io.on('connection', (socket) => {
     });
 });
 
-// ✅ Make io accessible globally for message controller
+// Make io accessible globally for message controller
 global.io = io;
 global.getReceiverSocketId = (receiverId) => {
     return onlineUsers.get(receiverId.toString());
 };
 
-// ✅ Global error handler
+// Global error handler
 app.use((err, req, res, next) => {
     console.error('Unhandled error:', err);
     res.status(500).json({ 
@@ -130,18 +126,17 @@ app.use((err, req, res, next) => {
     });
 });
 
-// ✅ Start server with proper error handling
+// Start server with proper error handling
 const startServer = async () => {
     try {
         await connectDB();
         console.log('✅ Database connected successfully');
         
-        // ✅ Use server.listen instead of app.listen for Socket.IO
         server.listen(PORT, () => {
             console.log(`✅ Server running on port ${PORT}`);
             console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
-            console.log(`🔌 Socket.IO enabled`);
-            console.log(`📡 Current directory: ${__dirname}`);
+            // console.log(`🔌 Socket.IO enabled`);
+            // console.log(`📡 Current directory: ${__dirname}`);
         });
         
     } catch (error) {
