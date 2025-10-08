@@ -2,16 +2,48 @@ import { create } from "zustand";
 import axiosInstance from "../lib/axios";
 import toast from "react-hot-toast";
 import { useAuthStore } from "./useAuthStore";
+import { isSameDay } from "../utils/dateUtils"; // ✅ Import date utility
 
 export const useChatStore = create((set, get) => ({
   allContacts: [],
   chats: [],
   messages: [],
+  messagesWithSeparators: [], // ✅ New field for processed messages
   activeTab: "chats",
   selectedUser: null,
   isUsersLoading: false,
   isMessagesLoading: false,
   isSoundEnabled: JSON.parse(localStorage.getItem("isSoundEnabled")) === true,
+
+  // ✅ Function to add date separators to messages
+  processMessagesWithDateSeparators: (messages) => {
+    if (!messages || messages.length === 0) return [];
+
+    const processedMessages = [];
+    let lastDate = null;
+
+    messages.forEach((message, index) => {
+      const messageDate = new Date(message.createdAt);
+      
+      // Check if we need to add a date separator
+      if (!lastDate || !isSameDay(lastDate, messageDate)) {
+        processedMessages.push({
+          type: 'date-separator',
+          id: `date-${messageDate.toISOString()}`,
+          date: messageDate.toISOString()
+        });
+        lastDate = messageDate;
+      }
+
+      // Add the actual message
+      processedMessages.push({
+        type: 'message',
+        ...message
+      });
+    });
+
+    return processedMessages;
+  },
 
   toggleSound: () => {
     const currentSound = get().isSoundEnabled;
@@ -26,7 +58,6 @@ export const useChatStore = create((set, get) => ({
     set({ isUsersLoading: true });
     try {
       const res = await axiosInstance.get("/messages/contacts");
-      // ✅ Fix: Backend returns data directly, not nested
       console.log("📞 Contacts response:", res.data);
       set({ allContacts: res.data || [] });
     } catch (error) {
@@ -41,7 +72,6 @@ export const useChatStore = create((set, get) => ({
     set({ isUsersLoading: true });
     try {
       const res = await axiosInstance.get("/messages/chats");
-      // ✅ Fix: Backend returns data directly, not nested
       console.log("💬 Chats response:", res.data);
       set({ chats: res.data || [] });
     } catch (error) {
@@ -52,13 +82,37 @@ export const useChatStore = create((set, get) => ({
     }
   },
 
+  updateChatOrder: (userId) => {
+    const { chats } = get();
+    const chatIndex = chats.findIndex(chat => chat._id === userId);
+    
+    if (chatIndex > 0) {
+      const updatedChats = [...chats];
+      const [movedChat] = updatedChats.splice(chatIndex, 1);
+      updatedChats.unshift({
+        ...movedChat,
+        lastMessageTime: new Date().toISOString()
+      });
+      
+      set({ chats: updatedChats });
+    }
+  },
+
   getMessagesByUserId: async (userId) => {
     set({ isMessagesLoading: true });
     try {
       const res = await axiosInstance.get(`/messages/${userId}`);
-      // ✅ Fix: Backend returns data directly, not nested
       console.log("📨 Messages response:", res.data);
-      set({ messages: res.data || [] });
+      
+      const messages = res.data || [];
+      
+      // ✅ Process messages with date separators
+      const messagesWithSeparators = get().processMessagesWithDateSeparators(messages);
+      
+      set({ 
+        messages: messages,
+        messagesWithSeparators: messagesWithSeparators
+      });
     } catch (error) {
       console.error("Error fetching messages:", error);
       toast.error(error.response?.data?.message || "Failed to fetch messages");
@@ -88,13 +142,18 @@ export const useChatStore = create((set, get) => ({
       isOptimistic: true,
     };
 
-    // ✅ Immediately update the UI by adding the message
-    set({ messages: [...messages, optimisticMessage] });
+    // ✅ Update messages and reprocess with separators
+    const newMessages = [...messages, optimisticMessage];
+    const messagesWithSeparators = get().processMessagesWithDateSeparators(newMessages);
+    
+    set({ 
+      messages: newMessages,
+      messagesWithSeparators: messagesWithSeparators
+    });
 
     try {
       const res = await axiosInstance.post(`/messages/send/${selectedUser._id}`, messageData);
       
-      // ✅ Backend returns message directly
       const realMessage = res.data;
       console.log("📤 Send message response:", realMessage);
       
@@ -103,15 +162,26 @@ export const useChatStore = create((set, get) => ({
         msg._id === tempId ? realMessage : msg
       );
       
-      set({ messages: updatedMessages });
+      const updatedMessagesWithSeparators = get().processMessagesWithDateSeparators(updatedMessages);
       
-      // ✅ Refresh chat list to show new conversation
-      get().getMyChatPartners();
+      set({ 
+        messages: updatedMessages,
+        messagesWithSeparators: updatedMessagesWithSeparators
+      });
+      
+      get().updateChatOrder(selectedUser._id);
       
     } catch (error) {
       console.error("Error sending message:", error);
-      // ✅ Remove optimistic message on failure
-      set({ messages: get().messages.filter(msg => msg._id !== tempId) });
+      
+      const filteredMessages = get().messages.filter(msg => msg._id !== tempId);
+      const filteredMessagesWithSeparators = get().processMessagesWithDateSeparators(filteredMessages);
+      
+      set({ 
+        messages: filteredMessages,
+        messagesWithSeparators: filteredMessagesWithSeparators
+      });
+      
       toast.error(error.response?.data?.message || "Failed to send message");
     }
   },
@@ -132,8 +202,17 @@ export const useChatStore = create((set, get) => ({
       const isMessageSentFromSelectedUser = newMessage.senderId === selectedUser._id;
       if (!isMessageSentFromSelectedUser) return;
 
+      // ✅ Add new message and reprocess with separators
       const currentMessages = get().messages;
-      set({ messages: [...currentMessages, newMessage] });
+      const updatedMessages = [...currentMessages, newMessage];
+      const messagesWithSeparators = get().processMessagesWithDateSeparators(updatedMessages);
+
+      set({ 
+        messages: updatedMessages,
+        messagesWithSeparators: messagesWithSeparators
+      });
+
+      get().updateChatOrder(newMessage.senderId);
 
       if (isSoundEnabled) {
         const notificationSound = new Audio("/sounds/notification.mp3");
