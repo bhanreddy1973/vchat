@@ -22,7 +22,7 @@ export const useChatStore = create((set, get) => ({
     const processedMessages = [];
     let lastDate = null;
 
-    messages.forEach((message, index) => {
+    messages.forEach((message) => {
       const messageDate = new Date(message.createdAt);
       
       // Check if we need to add a date separator

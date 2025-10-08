@@ -22,9 +22,10 @@ const io = socketIo(server, {
   }
 });
 
-const { Env } = require('./lib/env');
+// ✅ Remove this line causing the error - __dirname is already available in CommonJS
+// const __dirname = path.resolve(); // ❌ This line causes the error
 
-const PORT = process.env.PORT || Env.PORT || 5000;
+const PORT = process.env.PORT || 5000;
 
 // CORS configuration
 app.use(cors({
@@ -50,16 +51,38 @@ const messageRoute = require('./routes/message.route');
 app.use("/api/auth", authRoute);
 app.use("/api/messages", messageRoute);
 
-// Serve static files in production
+// ✅ Static file serving for production
 if (process.env.NODE_ENV === "production") {
-    app.use(express.static(path.join(__dirname, "../frontend/dist")));
+    // ✅ Use path.join with __dirname (already available in CommonJS)
+    const staticPath = path.join(__dirname, "../../frontend/dist");
+    console.log("📁 Serving static files from:", staticPath);
     
+    app.use(express.static(staticPath));
+    
+    // ✅ Handle SPA routing
     app.get("*", (req, res) => {
-        res.sendFile(path.resolve(__dirname, "../frontend/dist/index.html"));
+        // Skip API routes
+        if (req.path.startsWith('/api/')) {
+            return res.status(404).json({ message: 'API route not found' });
+        }
+        
+        const indexPath = path.join(__dirname, "../../frontend/dist/index.html");
+        console.log("📄 Serving index.html from:", indexPath);
+        
+        res.sendFile(indexPath, (err) => {
+            if (err) {
+                console.error("❌ Error serving index.html:", err);
+                res.status(500).send("Error loading application");
+            }
+        });
     });
 } else {
     app.get('/', (req, res) => {
-        res.json({ message: 'Chatify API is running!' });
+        res.json({ 
+            message: 'Chatify API is running!',
+            environment: process.env.NODE_ENV || 'development',
+            port: PORT
+        });
     });
 }
 
@@ -67,55 +90,60 @@ if (process.env.NODE_ENV === "production") {
 const onlineUsers = new Map(); // userId -> socketId
 
 io.on('connection', (socket) => {
-  console.log(`✅ User connected: ${socket.id}`);
-  
-  const userId = socket.handshake.query.userId;
-  if (userId && userId !== 'undefined') {
-    onlineUsers.set(userId, socket.id);
-    console.log(`👤 User ${userId} is online`);
+    console.log(`✅ User connected: ${socket.id}`);
     
-    // Broadcast online users to all clients
-    io.emit('getOnlineUsers', Array.from(onlineUsers.keys()));
-  }
-
-  // Handle disconnection
-  socket.on('disconnect', () => {
-    console.log(`❌ User disconnected: ${socket.id}`);
-    
+    const userId = socket.handshake.query.userId;
     if (userId && userId !== 'undefined') {
-      onlineUsers.delete(userId);
-      console.log(`👤 User ${userId} went offline`);
-      
-      // Broadcast updated online users
-      io.emit('getOnlineUsers', Array.from(onlineUsers.keys()));
+        onlineUsers.set(userId, socket.id);
+        console.log(`👤 User ${userId} is online`);
+        
+        // Broadcast online users to all clients
+        io.emit('getOnlineUsers', Array.from(onlineUsers.keys()));
     }
-  });
+
+    // Handle disconnection
+    socket.on('disconnect', () => {
+        console.log(`❌ User disconnected: ${socket.id}`);
+        
+        if (userId && userId !== 'undefined') {
+            onlineUsers.delete(userId);
+            console.log(`👤 User ${userId} went offline`);
+            
+            // Broadcast updated online users
+            io.emit('getOnlineUsers', Array.from(onlineUsers.keys()));
+        }
+    });
 });
 
 // ✅ Make io accessible globally for message controller
 global.io = io;
 global.getReceiverSocketId = (receiverId) => {
-  return onlineUsers.get(receiverId.toString());
+    return onlineUsers.get(receiverId.toString());
 };
 
 // ✅ Global error handler
 app.use((err, req, res, next) => {
     console.error('Unhandled error:', err);
-    res.status(500).json({ message: 'Internal server error' });
+    res.status(500).json({ 
+        message: 'Internal server error',
+        error: process.env.NODE_ENV === 'development' ? err.message : undefined
+    });
 });
 
 // ✅ Start server with proper error handling
 const startServer = async () => {
     try {
         await connectDB();
-        console.log('✅ Database connected');
+        console.log('✅ Database connected successfully');
         
         // ✅ Use server.listen instead of app.listen for Socket.IO
-        server.listen(PORT, '0.0.0.0', () => {
+        server.listen(PORT, () => {
             console.log(`✅ Server running on port ${PORT}`);
-            console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+            console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
             console.log(`🔌 Socket.IO enabled`);
+            console.log(`📡 Current directory: ${__dirname}`);
         });
+        
     } catch (error) {
         console.error('❌ Failed to start server:', error);
         process.exit(1);
@@ -123,3 +151,5 @@ const startServer = async () => {
 };
 
 startServer();
+
+module.exports = { app, server, io };
