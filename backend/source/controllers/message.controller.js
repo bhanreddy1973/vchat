@@ -78,38 +78,86 @@ const sendMessage = async (req, res) => {
   }
 };
 
-// ✅ Renamed to match route imports: getMyChatPartners -> getChats
+// ...existing imports...
+
 const getChats = async (req, res) => {
   try {
     const userId = req.user._id;
     console.log(`✅ Getting chats for user: ${userId}`);
 
-    const messages = await Message.find({
-      $or: [{ senderId: userId }, { receiverId: userId }]
-    }).sort({ createdAt: -1 });
-
-    const chatPartnerIds = new Set();
-    
-    messages.forEach(message => {
-      if (message.senderId.toString() !== userId.toString()) {
-        chatPartnerIds.add(message.senderId.toString());
+    // ✅ Get messages with better aggregation for sorting
+    const chatData = await Message.aggregate([
+      {
+        $match: {
+          $or: [{ senderId: userId }, { receiverId: userId }]
+        }
+      },
+      {
+        $sort: { createdAt: -1 }
+      },
+      {
+        $group: {
+          _id: {
+            $cond: {
+              if: { $eq: ['$senderId', userId] },
+              then: '$receiverId',
+              else: '$senderId'
+            }
+          },
+          lastMessage: { $first: '$$ROOT' },
+          lastMessageTime: { $first: '$createdAt' },
+          unreadCount: {
+            $sum: {
+              $cond: {
+                if: {
+                  $and: [
+                    { $ne: ['$senderId', userId] },
+                    { $eq: ['$read', false] } // Assuming you have a read field
+                  ]
+                },
+                then: 1,
+                else: 0
+              }
+            }
+          }
+        }
+      },
+      {
+        $sort: { lastMessageTime: -1 } // ✅ Sort by most recent message
+      },
+      {
+        $lookup: {
+          from: 'users',
+          localField: '_id',
+          foreignField: '_id',
+          as: 'userInfo'
+        }
+      },
+      {
+        $unwind: '$userInfo'
+      },
+      {
+        $project: {
+          _id: '$userInfo._id',
+          email: '$userInfo.email',
+          fullname: '$userInfo.fullname',
+          profilePic: '$userInfo.profilePic',
+          lastMessage: '$lastMessage',
+          lastMessageTime: '$lastMessageTime',
+          unreadCount: '$unreadCount'
+        }
       }
-      if (message.receiverId.toString() !== userId.toString()) {
-        chatPartnerIds.add(message.receiverId.toString());
-      }
-    });
+    ]);
 
-    const chatPartners = await User.find({
-      _id: { $in: Array.from(chatPartnerIds) }
-    }).select("-password");
-
-    console.log(`✅ Returning chats: ${chatPartners.length}`);
-    res.status(200).json(chatPartners);
+    console.log(`✅ Returning sorted chats: ${chatData.length}`);
+    res.status(200).json(chatData);
   } catch (error) {
     console.error("Error in getChats controller: ", error.message);
     res.status(500).json({ error: "Internal server error" });
   }
 };
+
+// ...rest of your controller code...
 
 // ✅ Export with names that match your route imports
 module.exports = {
