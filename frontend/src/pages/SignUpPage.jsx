@@ -7,14 +7,14 @@ import { Link } from "react-router";
 import toast from "react-hot-toast";
 
 function SignUpPage() {
-  const [formData, setFormData] = useState({ fullName: "", email: "", password: "" });
+  const [formData, setFormData] = useState({ fullname: "", email: "", password: "" });
   const { signup, isSigningUp } = useAuthStore();
     const navigate = useNavigate();
   const handleSubmit = async (e) => {
     e.preventDefault();
     
     // ✅ Add basic validation
-    if (!formData.fullName.trim()) {
+    if (!formData.fullname.trim()) {
       toast.error('Full name is required');
       return;
     }
@@ -68,8 +68,8 @@ return (
 
                       <input
                         type="text"
-                        value={formData.fullName}
-                        onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
+                        value={formData.fullname}
+                        onChange={(e) => setFormData({ ...formData, fullname: e.target.value })}
                         className="input"
                         placeholder="John Doe"
                       />

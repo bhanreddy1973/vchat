@@ -4,7 +4,7 @@ const jwt = require('jsonwebtoken');
 const { generateToken } = require('../lib/utils');
 const { sendWelcomeEmail } = require('../emails/emailHandlers'); // ✅ Import from emailHandlers
 const {Env} = require('../lib/env');
-const { cloudinary } = require('../lib/cloundinary');
+const { cloudinary } = require('../lib/cloudinary');
 // Rest of your auth.controller.js code remains the same...
 
 const signup = async(req, res) => {
@@ -59,41 +59,58 @@ const signup = async(req, res) => {
     }
 }
 
-const login = async(req, res) => {
-    const {email, password} = req.body;
+// In your backend auth.controller.js
+
+const login = async (req, res) => {
     try {
-        // Validation
-        if(!email || !password) {
+        const { email, password } = req.body;
+        
+        console.log('🔍 Login attempt for email:', email);
+        
+        if (!email || !password) {
             return res.status(400).json({ message: "All fields are required" });
         }
-        
-        // Find user
+
         const user = await User.findOne({ email });
-        if(!user) {
+        if (!user) {
             return res.status(400).json({ message: "Invalid credentials" });
         }
-        
-        // Check password
-        const isPasswordCorrect = await bcrypt.compare(password, user.password);
-        if(!isPasswordCorrect) {
+
+        const isPasswordValid = await bcrypt.compare(password, user.password);
+        if (!isPasswordValid) {
             return res.status(400).json({ message: "Invalid credentials" });
         }
-        
-        // Generate token
-        generateToken(user._id, res);
-        
-        res.status(200).json({
-            _id: user._id,
-            fullname: user.fullname,
-            email: user.email,
-            profilePic: user.profilePic,
+
+        // ✅ Generate JWT token
+        const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
+            expiresIn: '7d'
         });
-        
+
+        // ✅ Set httpOnly cookie
+        res.cookie("jwt", token, {
+            maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+            httpOnly: true,
+            sameSite: "strict",
+            secure: process.env.NODE_ENV === "production"
+        });
+
+        console.log('✅ Login successful for user:', user._id);
+        console.log('✅ JWT token generated and cookie set');
+
+        res.status(200).json({
+            user: {
+                _id: user._id,
+                fullname: user.fullname,
+                email: user.email,
+                profilePic: user.profilePic
+            }
+        });
+
     } catch (error) {
-        console.error("Error occurred during login:", error);
-        return res.status(500).json({ message: "Internal server error" });
+        console.error("❌ Login error:", error);
+        res.status(500).json({ message: "Internal server error" });
     }
-}
+};
 
 const logout = async(req, res) => {
     try {
@@ -105,22 +122,74 @@ const logout = async(req, res) => {
     }
 }
 
-
-const updateProfile = async(req, res) => {
+// In auth.controller.js
+const updateProfile = async (req, res) => {
     try {
-        const { profilePic} = req.body;
+        console.log('=== UPDATE PROFILE DEBUG ===');
+        const bodySize = JSON.stringify(req.body).length;
+        console.log('Request body size:', (bodySize / 1024 / 1024).toFixed(2), 'MB');
+        
+        const { profilePic } = req.body;
         const userId = req.user._id;
-        if(!profilePic) return res.status(400).json({ message: "Profile picture URL is required" });
 
-        const uploadResponse = await cloudinary.uploader.upload(profilePic);
-        const updatedUser = await User.findByIdAndUpdate(userId, { profilePic: uploadResponse.secure_url }, { new: true }).select('-password');
+        // ✅ Validate payload size (10MB limit for base64)
+        if (profilePic && profilePic.length > 10000000) { // 10MB limit
+            return res.status(413).json({ 
+                message: "Image too large. Please choose an image smaller than 5MB." 
+            });
+        }
 
-        res.status(200).json(updatedUser);
+        // ✅ Validate base64 format
+        if (profilePic && !profilePic.startsWith('data:image/')) {
+            return res.status(400).json({ 
+                message: "Invalid image format" 
+            });
+        }
+
+        console.log('Updating profile for user:', userId);
+        console.log('Profile pic size:', profilePic ? (profilePic.length / 1024).toFixed(2) + 'KB' : 'No image');
+
+        const updatedUser = await User.findByIdAndUpdate(
+            userId,
+            { profilePic },
+            { new: true }
+        ).select('-password');
+
+        if (!updatedUser) {
+            return res.status(404).json({ message: "User not found" });
+        }
+
+        console.log('✅ Profile updated successfully');
+
+        res.status(200).json({
+            user: updatedUser
+        });
+
     } catch (error) {
-        console.error("Error occurred during profile update:", error);
-        return res.status(500).json({ message: "Internal server error" });
+        console.error("Update profile error:", error);
+        
+        // ✅ Handle specific MongoDB errors
+        if (error.name === 'DocumentTooLarge') {
+            return res.status(413).json({ 
+                message: "Image too large for database storage" 
+            });
+        }
+        
+        if (error.code === 'LIMIT_FILE_SIZE') {
+            return res.status(413).json({ 
+                message: "File size too large" 
+            });
+        }
+        
+        res.status(500).json({
+            message: "Internal server error",
+            ...(process.env.NODE_ENV === 'development' && { 
+                error: error.message 
+            })
+        });
     }
 };
+
 const checkAuth = async (req, res) => {
     try {
         res.status(200).json({ user: req.user });

@@ -1,8 +1,8 @@
-import  axios  from "axios";
+import axios from 'axios';
 
-const instance = axios.create({
-  baseURL: import.meta.env.MODE === "development" ? "http://localhost:5000/api" : "/api",
-    withCredentials: true,
+const axiosInstance = axios.create({
+    baseURL: 'http://localhost:5000/api',
+    withCredentials: true, // ✅ This sends cookies with requests
 });
 
-export default instance;
+export default axiosInstance;
